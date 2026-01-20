@@ -192,7 +192,7 @@ curl -X POST http://localhost:8000/api/receipts \
 make test
 # or
 docker compose exec backend pytest
-docker compose exec frontend npm test
+docker compose exec frontend pnpm test
 ```
 
 ## Potential Issues & Solutions

@@ -25,8 +25,8 @@ git --version
 node --version
 # Should be v20.x LTS
 
-# Verify npm
-npm --version
+# Verify pnpm
+pnpm --version
 # Should be 10.x
 ```
 
@@ -183,7 +183,7 @@ EOF
 
 ```bash
 # Install Claude Code (if not already)
-npm install -g @anthropic-ai/claude-code
+pnpm install -g @anthropic-ai/claude-code
 
 # Start Claude Code and install Ralph
 claude

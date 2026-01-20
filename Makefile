@@ -65,7 +65,7 @@ test-backend:
 
 test-frontend:
 	@echo "🧪 Running frontend tests..."
-	docker compose exec frontend npm test
+	docker compose exec frontend pnpm test
 
 test-e2e:
 	@echo "🧪 Running E2E tests..."
@@ -74,7 +74,7 @@ test-e2e:
 test-coverage:
 	@echo "📊 Running tests with coverage..."
 	docker compose exec backend pytest --cov=app --cov-report=html
-	docker compose exec frontend npm run test:coverage
+	docker compose exec frontend pnpm run test:coverage
 	@echo "Coverage reports generated in backend/htmlcov and frontend/coverage"
 
 # ============================================
@@ -92,14 +92,14 @@ lint-backend:
 
 lint-frontend:
 	@echo "🔍 Linting frontend..."
-	docker compose exec frontend npm run lint
-	docker compose exec frontend npm run type-check
+	docker compose exec frontend pnpm run lint
+	docker compose exec frontend pnpm run type-check
 
 format:
 	@echo "🎨 Formatting code..."
 	docker compose exec backend black .
 	docker compose exec backend isort .
-	docker compose exec frontend npm run format
+	docker compose exec frontend pnpm run format
 
 # ============================================
 # Database
