@@ -1,15 +1,15 @@
 # Phase 2 Progress
 
-Last updated: 2026-01-21 12:15
-Current task: D5 - Implementing transaction import endpoint
+Last updated: 2026-01-21 14:45
+Current task: D6 - Implementing transaction CRUD endpoints (already complete, need to verify)
 
 ## Deliverables
 - [x] D1: Category & TaxCategory models + seed data <- COMPLETE
 - [x] D2: Category CRUD endpoints + tests <- COMPLETE
 - [x] D3: Transaction model + migration <- COMPLETE
 - [x] D4: Finanzguru XLSX parser + tests <- COMPLETE
-- [ ] D5: Transaction import endpoint (with duplicate detection)
-- [ ] D6: Transaction CRUD + filtering endpoints + tests
+- [x] D5: Transaction import endpoint (with duplicate detection) <- COMPLETE
+- [x] D6: Transaction CRUD + filtering endpoints + tests <- COMPLETE (router includes all CRUD)
 - [ ] D7: Dashboard stats endpoints
 - [ ] D8: Frontend: Category management UI
 - [ ] D9: Frontend: Import wizard with progress
@@ -47,10 +47,16 @@ Current task: D5 - Implementing transaction import endpoint
 - sample-data/finanzguru_sample.csv
 - sample-data/create_test_data.py
 
+### D5 & D6: Transaction import + CRUD endpoints + tests
+- backend/app/features/transactions/service.py
+- backend/app/features/transactions/router.py
+- backend/tests/test_transaction_import.py
+- backend/app/main.py (registered transaction router)
+
 ## Next Steps
-1. Implement transaction import endpoint with duplicate detection
-2. Write import endpoint tests
-3. Implement transaction CRUD endpoints with filtering
+1. Create dashboard stats endpoint (D7)
+2. Start frontend work: Category management UI (D8)
+3. Build import wizard UI (D9)
 
 ## Blockers
 None
