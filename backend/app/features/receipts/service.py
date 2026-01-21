@@ -1,4 +1,5 @@
 """Receipt service for file handling and OCR."""
+import asyncio
 import os
 import uuid
 from datetime import datetime, timezone
@@ -14,25 +15,34 @@ from app.features.receipts.models import Receipt
 
 async def cleanup_receipt_file(file_path: str) -> None:
     """
-    Clean up a receipt file from disk.
+    Clean up a receipt file from disk asynchronously.
 
     Args:
         file_path: Path to the file to delete
     """
     try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        # Check if file exists and remove in thread pool
+        exists_and_removed = await asyncio.to_thread(_safe_remove_file, file_path)
+        if exists_and_removed:
             print(f"Cleaned up orphaned receipt file: {file_path}")
     except Exception as e:
         print(f"Failed to cleanup receipt file {file_path}: {e}")
         # Don't raise - cleanup failure shouldn't break the flow
 
 
+def _safe_remove_file(file_path: str) -> bool:
+    """Helper function to safely remove a file (runs in thread pool)."""
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return True
+    return False
+
+
 async def save_receipt_file(
     file: BinaryIO, filename: str, user_id: str
 ) -> tuple[str, int]:
     """
-    Save uploaded receipt file to disk.
+    Save uploaded receipt file to disk asynchronously.
 
     Args:
         file: File object
@@ -44,21 +54,27 @@ async def save_receipt_file(
     """
     # Create upload directory if it doesn't exist
     upload_dir = Path(settings.UPLOAD_DIR) / str(user_id)
-    upload_dir.mkdir(parents=True, exist_ok=True)
+    await asyncio.to_thread(upload_dir.mkdir, parents=True, exist_ok=True)
 
     # Generate unique filename
     file_ext = Path(filename).suffix
     unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_path = upload_dir / unique_filename
 
-    # Save file
-    content = file.read()
+    # Read file content in thread pool
+    content = await asyncio.to_thread(file.read)
     file_size = len(content)
 
-    with open(file_path, "wb") as f:
-        f.write(content)
+    # Write file in thread pool
+    await asyncio.to_thread(_write_file, file_path, content)
 
     return str(file_path), file_size
+
+
+def _write_file(file_path: Path, content: bytes) -> None:
+    """Helper function to write file content (runs in thread pool)."""
+    with open(file_path, "wb") as f:
+        f.write(content)
 
 
 async def create_receipt(
