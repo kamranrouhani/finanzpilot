@@ -1,13 +1,13 @@
 # Phase 2 Progress
 
-Last updated: 2026-01-21 11:45
-Current task: D4 - Implementing Finanzguru XLSX parser
+Last updated: 2026-01-21 12:15
+Current task: D5 - Implementing transaction import endpoint
 
 ## Deliverables
 - [x] D1: Category & TaxCategory models + seed data <- COMPLETE
 - [x] D2: Category CRUD endpoints + tests <- COMPLETE
 - [x] D3: Transaction model + migration <- COMPLETE
-- [ ] D4: Finanzguru XLSX parser + tests
+- [x] D4: Finanzguru XLSX parser + tests <- COMPLETE
 - [ ] D5: Transaction import endpoint (with duplicate detection)
 - [ ] D6: Transaction CRUD + filtering endpoints + tests
 - [ ] D7: Dashboard stats endpoints
@@ -40,10 +40,17 @@ Current task: D4 - Implementing Finanzguru XLSX parser
 - backend/alembic/env.py (imported Transaction model)
 - backend/app/features/auth/models.py (added transactions relationship)
 
+### D4: Finanzguru XLSX parser + tests
+- backend/app/features/transactions/finanzguru_parser.py
+- backend/tests/test_finanzguru_parser.py
+- backend/requirements.txt (added pandas, openpyxl)
+- sample-data/finanzguru_sample.csv
+- sample-data/create_test_data.py
+
 ## Next Steps
-1. Implement Finanzguru XLSX parser with pandas/openpyxl
-2. Write parser tests with sample data
-3. Implement transaction import endpoint with duplicate detection
+1. Implement transaction import endpoint with duplicate detection
+2. Write import endpoint tests
+3. Implement transaction CRUD endpoints with filtering
 
 ## Blockers
 None
