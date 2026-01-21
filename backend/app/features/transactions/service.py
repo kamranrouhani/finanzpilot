@@ -157,13 +157,13 @@ class TransactionService:
             )
 
         # Save uploaded file temporarily
-        with NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_file.flush()
-            temp_path = temp_file.name
-
+        temp_path = None
         try:
+            with NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
+                temp_path = temp_file.name
+                content = await file.read()
+                temp_file.write(content)
+                temp_file.flush()
             # Parse file
             parsed_transactions = parse_finanzguru_file(temp_path)
 
@@ -261,7 +261,7 @@ class TransactionService:
 
         finally:
             # Clean up temp file
-            if os.path.exists(temp_path):
+            if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)
 
     async def _map_categories(

@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import relationship
 
@@ -70,13 +70,18 @@ class Transaction(Base, UUIDMixin, TimestampMixin):
 
     # Import tracking
     source = Column(String(20), default="manual", nullable=False)  # "manual", "finanzguru"
-    import_hash = Column(String(64), unique=True, nullable=True, index=True)  # For duplicate detection
+    import_hash = Column(String(64), nullable=True, index=True)  # For duplicate detection
 
     # Relationships
     user = relationship("User", back_populates="transactions")
     category = relationship("Category", foreign_keys=[category_id])
     subcategory = relationship("Category", foreign_keys=[subcategory_id])
     tax_category = relationship("TaxCategory")
+
+    # Unique constraint for import_hash per user
+    __table_args__ = (
+        UniqueConstraint('user_id', 'import_hash', name='uq_user_import_hash'),
+    )
 
     def __repr__(self) -> str:
         return f"<Transaction(id={self.id}, date={self.date}, amount={self.amount}, counterparty={self.counterparty})>"

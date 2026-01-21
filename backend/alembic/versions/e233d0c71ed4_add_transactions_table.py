@@ -61,10 +61,11 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['subcategory_id'], ['categories.id'], ),
     sa.ForeignKeyConstraint(['tax_category_id'], ['tax_categories.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'import_hash', name='uq_user_import_hash')
     )
     op.create_index(op.f('ix_transactions_date'), 'transactions', ['date'], unique=False)
-    op.create_index(op.f('ix_transactions_import_hash'), 'transactions', ['import_hash'], unique=True)
+    op.create_index(op.f('ix_transactions_import_hash'), 'transactions', ['import_hash'], unique=False)
     op.create_index(op.f('ix_transactions_user_id'), 'transactions', ['user_id'], unique=False)
     # ### end Alembic commands ###
 

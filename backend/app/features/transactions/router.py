@@ -53,6 +53,26 @@ async def create_transaction(
     return await service.create_transaction(current_user.id, data)
 
 
+@router.get("/stats/summary", response_model=dict)
+async def get_transaction_stats(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get transaction statistics.
+
+    Returns total income, expenses, balance, and transaction count.
+    """
+    service = TransactionService(db)
+    return await service.get_statistics(
+        user_id=current_user.id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
 @router.get("/{transaction_id}", response_model=TransactionResponse)
 async def get_transaction(
     transaction_id: UUID,
@@ -148,23 +168,3 @@ async def delete_transaction(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Transaction not found"
         )
-
-
-@router.get("/stats/summary", response_model=dict)
-async def get_transaction_stats(
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Get transaction statistics.
-
-    Returns total income, expenses, balance, and transaction count.
-    """
-    service = TransactionService(db)
-    return await service.get_statistics(
-        user_id=current_user.id,
-        start_date=start_date,
-        end_date=end_date,
-    )
