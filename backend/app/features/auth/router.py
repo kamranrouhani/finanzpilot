@@ -4,14 +4,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.features.auth.models import User
-from app.features.auth.schemas import Token, UserCreate, UserLogin, UserResponse
+from app.features.auth.schemas import (Token, UserCreate, UserLogin,
+                                       UserResponse)
 from app.features.auth.service import login_user, register_user
 from app.shared.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)) -> User:
     """
     Register a new user.

@@ -10,7 +10,9 @@ from app.features.auth.models import User
 class TestRegister:
     """Test user registration."""
 
-    async def test_register_success(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_register_success(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test successful user registration."""
         response = await client.post(
             "/api/auth/register",

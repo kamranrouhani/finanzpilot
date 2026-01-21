@@ -1,16 +1,13 @@
 """Receipt routes."""
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.features.auth.models import User
-from app.features.receipts.schemas import ReceiptResponse, ReceiptListResponse
-from app.features.receipts.service import (
-    save_receipt_file,
-    create_receipt,
-    get_user_receipts,
-    process_receipt_ocr,
-)
+from app.features.receipts.schemas import ReceiptListResponse, ReceiptResponse
+from app.features.receipts.service import (create_receipt, get_user_receipts,
+                                           process_receipt_ocr,
+                                           save_receipt_file)
 from app.shared.dependencies import get_current_user
 
 router = APIRouter(prefix="/receipts", tags=["Receipts"])
@@ -34,14 +31,18 @@ async def upload_receipt(
         ReceiptResponse: Created receipt
     """
     # Validate file type
-    if not file.content_type or not file.content_type.startswith(("image/", "application/pdf")):
+    if not file.content_type or not file.content_type.startswith(
+        ("image/", "application/pdf")
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only image and PDF files are allowed",
         )
 
     # Save file
-    stored_path, file_size = await save_receipt_file(file.file, file.filename or "unknown", str(current_user.id))
+    stored_path, file_size = await save_receipt_file(
+        file.file, file.filename or "unknown", str(current_user.id)
+    )
 
     # Create receipt record
     receipt = await create_receipt(
@@ -100,9 +101,14 @@ async def get_receipt(
         ReceiptResponse: Receipt data
     """
     from sqlalchemy import select
+
     from app.features.receipts.models import Receipt
 
-    result = await db.execute(select(Receipt).where(Receipt.id == receipt_id, Receipt.user_id == current_user.id))
+    result = await db.execute(
+        select(Receipt).where(
+            Receipt.id == receipt_id, Receipt.user_id == current_user.id
+        )
+    )
     receipt = result.scalar_one_or_none()
 
     if not receipt:

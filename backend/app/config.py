@@ -25,9 +25,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "/app/uploads"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        case_sensitive=False,
-        extra="ignore"
+        env_file=".env", case_sensitive=False, extra="ignore"
     )
 
 

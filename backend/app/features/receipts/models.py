@@ -1,5 +1,5 @@
 """Receipt model."""
-from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
@@ -13,8 +13,15 @@ class Receipt(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "receipts"
 
     # Foreign keys
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    transaction_id = Column(UUID(as_uuid=True), nullable=True)  # Will be used in Phase 2
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    transaction_id = Column(
+        UUID(as_uuid=True), nullable=True
+    )  # Will be used in Phase 2
 
     # File information
     original_filename = Column(String(255), nullable=False)
@@ -31,7 +38,9 @@ class Receipt(Base, UUIDMixin, TimestampMixin):
     extracted_data = Column(JSONB, nullable=True)
 
     # Status
-    status = Column(String(20), nullable=False, default="pending")  # pending, processing, completed, failed
+    status = Column(
+        String(20), nullable=False, default="pending"
+    )  # pending, processing, completed, failed
     error_message = Column(Text, nullable=True)
 
     def __repr__(self) -> str:

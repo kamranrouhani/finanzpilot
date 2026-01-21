@@ -12,7 +12,9 @@ from app.config import settings
 from app.features.receipts.models import Receipt
 
 
-async def save_receipt_file(file: BinaryIO, filename: str, user_id: str) -> tuple[str, int]:
+async def save_receipt_file(
+    file: BinaryIO, filename: str, user_id: str
+) -> tuple[str, int]:
     """
     Save uploaded receipt file to disk.
 
@@ -81,7 +83,9 @@ async def create_receipt(
     return receipt
 
 
-async def get_user_receipts(db: AsyncSession, user_id: str, limit: int = 50) -> list[Receipt]:
+async def get_user_receipts(
+    db: AsyncSession, user_id: str, limit: int = 50
+) -> list[Receipt]:
     """
     Get all receipts for a user.
 
