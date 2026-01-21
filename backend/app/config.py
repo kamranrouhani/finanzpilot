@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 1440  # 24 hours
 
     # Ollama
-    OLLAMA_HOST: str = "http://ollama:11434"
+    OLLAMA_HOST: str = "http://host.docker.internal:11434"
 
     # Environment
     ENVIRONMENT: str = "production"
