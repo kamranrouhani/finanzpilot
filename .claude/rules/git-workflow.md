@@ -2,7 +2,7 @@
 
 ## Branch Strategy
 - `main` - Production-ready code only
-- `feature/<phase>-<name>` - Feature development
+- `feat/<phase>-<name>` - Feature development
 - Never commit directly to main
 
 ## Commit Messages (Conventional Commits)
@@ -17,7 +17,7 @@ style: format code with black/prettier
 ```
 
 ## Commit Frequency
-- Commit after each working feature
+- Commit after each working feat
 - Commit message should describe WHAT, not HOW
 - Keep commits atomic (one logical change)
 
@@ -36,12 +36,12 @@ style: format code with black/prettier
 
 ## Branch Naming
 ```
-feature/phase-1          # Phase work
-feature/auth-jwt         # Specific feature
+feat/phase-1          # Phase work
+feat/auth-jwt         # Specific feat
 fix/receipt-upload-error # Bug fix
 docs/api-endpoints       # Documentation
 ```
 
 ## Merge Strategy
-- Squash merge for feature branches
+- Squash merge for feat branches
 - Keep commit history clean on main

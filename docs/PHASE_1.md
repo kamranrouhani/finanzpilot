@@ -28,7 +28,7 @@ Before starting Ralph, verify:
 - [ ] Health checks for all services
 
 ### D2: Backend Foundation
-- [ ] FastAPI project structure (feature-based)
+- [ ] FastAPI project structure (feat-based)
 - [ ] SQLAlchemy 2.0 setup with async
 - [ ] Alembic migrations configured
 - [ ] Database models: User, Account, Category, TaxCategory
@@ -69,7 +69,7 @@ Before starting Ralph, verify:
 - [ ] pytest configuration
 - [ ] Test database fixture
 - [ ] Vitest configuration
-- [ ] Sample test for each feature
+- [ ] Sample test for each feat
 - [ ] GitHub Actions CI workflow
 
 ### D7: Documentation
@@ -90,15 +90,15 @@ Set up Docker infrastructure, authentication, and basic receipt OCR.
 
 ## Working Rules
 1. ALWAYS check existing files before creating new ones
-2. Use feature-based folder structure as defined in CLAUDE.md
+2. Use feat-based folder structure as defined in CLAUDE.md
 3. Write tests FIRST, then implementation (TDD)
 4. Run tests after each implementation
-5. Commit after each working feature with conventional commit message
+5. Commit after each working feat with conventional commit message
 6. If tests fail, fix before moving on
 
 ## Git Workflow
-1. You are on branch: feature/phase-1
-2. After each feature: git add . && git commit -m 'feat: description'
+1. You are on branch: feat/phase-1
+2. After each feat: git add . && git commit -m 'feat: description'
 3. Run: make test (or equivalent) before committing
 4. Do NOT push until all Phase 1 deliverables complete
 
@@ -292,7 +292,7 @@ Phase 2 will add:
 **Start command:**
 ```bash
 cd ~/projects/finanzpilot
-git checkout -b feature/phase-1
+git checkout -b feat/phase-1
 claude
 # Then paste the Ralph loop prompt
 ```

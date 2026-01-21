@@ -1,0 +1,106 @@
+services:
+  # PostgreSQL Database (same as production)
+  postgres:
+    image: postgres:16-alpine
+    container_name: finanzpilot-postgres-dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finanzpilot-network-dev
+
+  # Ollama (same as production)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: finanzpilot-ollama-dev
+    volumes:
+      - ollama_data_dev:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - finanzpilot-network-dev
+
+  # FastAPI Backend with hot reload
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: finanzpilot-backend-dev
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}
+      OLLAMA_HOST: ${OLLAMA_HOST}
+      ENVIRONMENT: development
+    volumes:
+      - ./backend:/app
+      - backend_uploads_dev:/app/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - finanzpilot-network-dev
+
+  # Next.js Frontend with hot reload
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: finanzpilot-frontend-dev
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    command: pnpm dev
+    networks:
+      - finanzpilot-network-dev
+
+# Named volumes for development data
+volumes:
+  postgres_data_dev:
+    name: finanzpilot_postgres_data_dev
+  ollama_data_dev:
+    name: finanzpilot_ollama_data_dev
+  backend_uploads_dev:
+    name: finanzpilot_backend_uploads_dev
+
+# Development network
+networks:
+  finanzpilot-network-dev:
+    name: finanzpilot-network-dev
+    driver: bridge
