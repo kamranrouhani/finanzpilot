@@ -13,6 +13,7 @@ from app.shared.utils import transform_database_url
 # Import all models to ensure they're registered with Base
 from app.features.auth.models import User  # noqa: F401
 from app.features.receipts.models import Receipt  # noqa: F401
+from app.features.categories.models import Category, TaxCategory  # noqa: F401
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

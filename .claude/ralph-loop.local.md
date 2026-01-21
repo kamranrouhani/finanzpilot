@@ -1,134 +1,144 @@
 ---
 active: true
 iteration: 1
-max_iterations: 50
-completion_promise: "PHASE_1_COMPLETE"
-started_at: "2026-01-21T01:51:00Z"
+max_iterations: 60
+completion_promise: "PHASE_2_COMPLETE"
+started_at: "2026-01-21T09:50:03Z"
 ---
 
 
-## Recovery & Resume Protocol (READ FIRST)
-Before starting ANY work:
-1. Check for existing progress file: cat docs/iterations/PHASE_1_PROGRESS.md 2>/dev/null
-2. Check git history: git log --oneline -10
-3. Check current branch: git branch --show-current
-4. List existing files: ls -la backend/ frontend/ 2>/dev/null
+## Recovery & Resume Protocol
+Before ANY work:
+1. cat docs/iterations/PHASE_2_PROGRESS.md 2>/dev/null
+2. git log --oneline -10
+3. git branch --show-current (must be feat/phase-2)
+4. ls -la backend/app/features/ frontend/src/app/
 
 If progress file exists, resume from last incomplete item.
-If files exist but no progress file, audit what's done and create progress file.
-Do NOT recreate existing files — read and continue from them.
+Do NOT recreate existing files — read and extend them.
 
 ## Progress Tracking (MANDATORY)
-After EVERY completed deliverable, update docs/iterations/PHASE_1_PROGRESS.md:
+Create/update docs/iterations/PHASE_2_PROGRESS.md after EVERY deliverable:
 
-# Phase 1 Progress
+# Phase 2 Progress
 Last updated: [timestamp]
-Current task: [what you're working on]
+Current task: [description]
 
 ## Deliverables
-- [x] D1: Docker Infrastructure
-- [x] D2: Backend Foundation  
-- [ ] D3: Authentication ← IN PROGRESS
-- [ ] D4: Frontend Foundation
-- [ ] D5: Basic Receipt OCR
-- [ ] D6: Testing Infrastructure
-- [ ] D7: Documentation
+- [ ] D1: Category & TaxCategory models + seed data
+- [ ] D2: Category CRUD endpoints + tests
+- [ ] D3: Transaction model + migration
+- [ ] D4: Finanzguru XLSX parser + tests
+- [ ] D5: Transaction import endpoint (with duplicate detection)
+- [ ] D6: Transaction CRUD + filtering endpoints + tests
+- [ ] D7: Dashboard stats endpoints
+- [ ] D8: Frontend: Category management UI
+- [ ] D9: Frontend: Import wizard with progress
+- [ ] D10: Frontend: Transaction list with filters
+- [ ] D11: Frontend: Dashboard with charts (Recharts)
+- [ ] D12: E2E test: import flow
+- [ ] D13: Documentation
 
 ## Completed Files
-- docker-compose.yml ✓
-- backend/app/main.py ✓
+[list files as completed]
 
-## Next Steps
-1. [immediate next task]
-2. [following task]
+## Blockers
+[any issues]
 
-## Blockers/Issues
-- [any problems encountered]
-
-Commit the progress file after each deliverable:
-git add docs/iterations/PHASE_1_PROGRESS.md && git commit -m 'chore: update phase 1 progress'
+Commit after each deliverable:
+git add -A && git commit -m 'feat: [deliverable description]'
+git add docs/iterations/PHASE_2_PROGRESS.md && git commit -m 'chore: update phase 2 progress'
 
 ## Pre-flight Check
-Before coding, verify:
-1. Docker running: docker ps
-2. Ollama responds: curl -s http://localhost:11434/api/tags | head -5
-3. Can write: touch test-write && rm test-write
+1. docker ps (postgres, backend, frontend running)
+2. curl -s http://localhost:8000/docs | head -5 (API responding)
+3. All Phase 1 tests still pass: docker compose exec backend pytest
 
-If checks fail, output <promise>BLOCKED</promise> and explain why.
+If any fail, fix before proceeding.
 
 ## Context
-Building FinanzPilot Phase 1: Foundation.
-Read @CLAUDE.md for project context.
-Read @docs/SPEC.md for specifications.
-Read @docs/PHASE_1.md for deliverables list.
+Building FinanzPilot Phase 2: Data Import & Transaction Management.
+Read @CLAUDE.md for full context (especially Finanzguru column mapping and German tax categories).
+Read @docs/SPEC.md for database schema.
+Read @docs/PHASE_2.md for detailed requirements.
+
+Phase 1 complete: Auth, Receipt OCR, Docker infrastructure working.
+
+## Finanzguru Import (CRITICAL)
+Column mapping from CLAUDE.md - use EXACTLY:
+- Buchungstag → date (format: DD.MM.YYYY)
+- Betrag → amount (German decimal: comma, e.g., -45,67)
+- Beguenstigter/Auftraggeber → counterparty
+- Verwendungszweck → description
+- Analyse-Hauptkategorie → category
+- Analyse-Unterkategorie → subcategory
+... (see full mapping in CLAUDE.md)
+
+Duplicate detection: hash(date + amount + counterparty + description)
+
+## Tech Stack (STRICT)
+- Backend: FastAPI, SQLAlchemy 2.0, Alembic, pandas (for XLSX)
+- Frontend: Next.js 15 App Router, TypeScript, Tailwind, shadcn/ui, Recharts
+- Package manager: pnpm (NOT npm)
+- Tests: pytest (backend), vitest (frontend)
 
 ## Folder Structure (STRICT)
-Backend: feature-based in backend/app/features/<feature>/
-Frontend: Next.js App Router in frontend/src/app/
-Components: frontend/src/components/features/<feature>/
-Use pnpm, NOT npm.
+Backend features: backend/app/features/<feature>/{router,service,schemas,models}.py
+Frontend pages: frontend/src/app/(dashboard)/<page>/page.tsx
+Frontend components: frontend/src/components/features/<feature>/
+API client: frontend/src/lib/api/<feature>.ts
 
 ## Working Rules
-1. Check existing files BEFORE creating
-2. Write tests FIRST, then implementation
-3. Run tests after each implementation
-4. Commit after each working feature
-5. Update progress file after each deliverable
-6. Use conventional commits (feat:, fix:, test:, chore:)
-
-## Git Workflow
-Branch: feat/phase-1
-Commit frequently with descriptive messages.
-Push only when deliverable complete.
+1. Check existing files BEFORE creating new ones
+2. Write tests FIRST (TDD)
+3. Run tests after implementation: docker compose exec backend pytest
+4. Run frontend tests: docker compose exec frontend pnpm test
+5. Format backend: docker compose exec backend black . && isort .
+6. Commit after each working deliverable
+7. Update progress file after each deliverable
 
 ## Task Order
-1. Docker infrastructure (docker-compose.yml)
-2. Backend foundation (FastAPI structure)
-3. Database setup (SQLAlchemy + Alembic)
-4. User model + migration
-5. Auth tests → Auth implementation
-6. Frontend foundation (Next.js + Tailwind + shadcn)
-7. Frontend auth pages
-8. Receipt model + migration
-9. Ollama integration
-10. Receipt upload endpoint + UI
-11. GitHub Actions CI workflow
-12. Final documentation
+1. Create Category model with parent_id for hierarchy
+2. Create TaxCategory model (German: Werbungskosten, Sonderausgaben, etc.)
+3. Create seed data migration for default categories
+4. Write category endpoint tests
+5. Implement category CRUD endpoints
+6. Create Transaction model (see SPEC.md for full schema)
+7. Write Finanzguru parser tests with sample data
+8. Implement XLSX parser (pandas + openpyxl)
+9. Write import endpoint tests
+10. Implement import endpoint with duplicate detection + progress
+11. Write transaction CRUD tests
+12. Implement transaction list with pagination + filters
+13. Implement dashboard stats endpoint (monthly totals, category breakdown)
+14. Build category management UI (list, create, edit)
+15. Build import wizard UI (upload, preview, confirm, progress bar)
+16. Build transaction list page (table, filters, pagination, inline category edit)
+17. Build dashboard (summary cards, Recharts charts)
+18. Write E2E test for import flow
+19. Update documentation
 
 ## Verification Before Completion
-Before outputting PHASE_1_COMPLETE, verify ALL:
-- [ ] docker compose up starts all services
-- [ ] Can register user: POST /api/auth/register
-- [ ] Can login: POST /api/auth/login returns JWT
-- [ ] Protected routes reject without token
-- [ ] Can upload image and get OCR result
-- [ ] All backend tests pass: docker compose exec backend pytest
-- [ ] All frontend tests pass: docker compose exec frontend pnpm test
-- [ ] No TypeScript errors: docker compose exec frontend pnpm type-check
-- [ ] No Python lint errors: docker compose exec backend ruff check .
-- [ ] Progress file is complete and accurate
+- [ ] Can import Finanzguru XLSX via API
+- [ ] Re-importing same file creates 0 duplicates
+- [ ] Transaction list shows data with working filters
+- [ ] Can change transaction category
+- [ ] Dashboard shows correct monthly totals
+- [ ] Charts render with real data
+- [ ] All backend tests pass
+- [ ] All frontend tests pass
+- [ ] No lint errors
+- [ ] Progress file complete
 
 ## Error Handling
-If a test fails:
-1. Read the error carefully
-2. Fix the issue
-3. Re-run the test
-4. Do NOT move on until green
-
-If Docker fails:
-1. Check logs: docker compose logs <service>
-2. Check if port is in use: lsof -i :<port>
-3. Rebuild if needed: docker compose build --no-cache <service>
-
-If Ollama fails:
-1. Check it's running: curl http://localhost:11434/api/tags
-2. Check model exists: ollama list (should show qwen2.5-vl:7b)
-3. Restart if needed: ollama serve
+XLSX parse errors: Check pandas + openpyxl installed, check date format (DD.MM.YYYY)
+Amount parsing: German format uses comma (replace , with . for float)
+Large import slow: Use bulk_insert_mappings, commit in batches of 1000
 
 ## Output
 When ALL deliverables verified:
-<promise>PHASE_1_COMPLETE</promise>
+<promise>PHASE_2_COMPLETE</promise>
 
-If blocked and cannot proceed:
+If blocked:
 <promise>BLOCKED</promise>
 
