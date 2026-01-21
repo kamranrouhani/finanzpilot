@@ -12,6 +12,22 @@ from app.config import settings
 from app.features.receipts.models import Receipt
 
 
+async def cleanup_receipt_file(file_path: str) -> None:
+    """
+    Clean up a receipt file from disk.
+
+    Args:
+        file_path: Path to the file to delete
+    """
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Cleaned up orphaned receipt file: {file_path}")
+    except Exception as e:
+        print(f"Failed to cleanup receipt file {file_path}: {e}")
+        # Don't raise - cleanup failure shouldn't break the flow
+
+
 async def save_receipt_file(
     file: BinaryIO, filename: str, user_id: str
 ) -> tuple[str, int]:
