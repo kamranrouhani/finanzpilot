@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.config import settings
 from app.database import Base
+from app.shared.utils import transform_database_url
 # Import all models to ensure they're registered with Base
 from app.features.auth.models import User  # noqa: F401
 from app.features.receipts.models import Receipt  # noqa: F401
@@ -29,7 +30,7 @@ target_metadata = Base.metadata
 # Override sqlalchemy.url with the one from settings
 config.set_main_option(
     "sqlalchemy.url",
-    settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://"),
+    transform_database_url(settings.DATABASE_URL),
 )
 
 

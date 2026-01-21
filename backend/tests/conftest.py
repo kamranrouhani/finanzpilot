@@ -1,5 +1,6 @@
 """Pytest configuration and fixtures."""
 import asyncio
+import os
 from typing import AsyncGenerator, Generator
 
 import pytest
@@ -11,8 +12,11 @@ from sqlalchemy.pool import NullPool
 from app.database import Base, get_db
 from app.main import app
 
-# Test database URL (use a separate test database)
-TEST_DATABASE_URL = "postgresql+asyncpg://finanzpilot:localdevpassword123@postgres:5432/finanzpilot_test"
+# Test database URL - configurable via environment, with fallback for local development
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql://finanzpilot:localdevpassword123@postgres:5432/finanzpilot_test"
+).replace("postgresql://", "postgresql+asyncpg://")
 
 # Create test engine
 test_engine = create_async_engine(

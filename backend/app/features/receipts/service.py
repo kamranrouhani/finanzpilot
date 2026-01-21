@@ -165,11 +165,13 @@ async def process_receipt_ocr(db: AsyncSession, receipt: Receipt) -> Receipt:
         receipt.ocr_model = "qwen2.5-vl:7b"
         receipt.ocr_processed_at = datetime.now(timezone.utc)
         receipt.status = "completed"
+
+        await db.commit()
+        await db.refresh(receipt)
     except Exception as e:
         receipt.status = "failed"
         receipt.error_message = str(e)
-
-    await db.commit()
-    await db.refresh(receipt)
+        await db.commit()
+        await db.refresh(receipt)
 
     return receipt

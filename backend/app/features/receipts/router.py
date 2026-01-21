@@ -97,7 +97,7 @@ async def upload_receipt(
         receipt = await process_receipt_ocr(db, receipt)
     except Exception:
         # If OCR fails, keep the file and database record
-        # The receipt status will be set to "failed" in process_receipt_ocr
+        # The receipt status is already set to "failed" in process_receipt_ocr
         # User can retry OCR later
         pass
 
