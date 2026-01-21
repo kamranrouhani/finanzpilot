@@ -1,12 +1,12 @@
 # Phase 2 Progress
 
-Last updated: 2026-01-21 11:30
-Current task: D3 - Creating Transaction model
+Last updated: 2026-01-21 11:45
+Current task: D4 - Implementing Finanzguru XLSX parser
 
 ## Deliverables
 - [x] D1: Category & TaxCategory models + seed data <- COMPLETE
 - [x] D2: Category CRUD endpoints + tests <- COMPLETE
-- [ ] D3: Transaction model + migration
+- [x] D3: Transaction model + migration <- COMPLETE
 - [ ] D4: Finanzguru XLSX parser + tests
 - [ ] D5: Transaction import endpoint (with duplicate detection)
 - [ ] D6: Transaction CRUD + filtering endpoints + tests
@@ -33,10 +33,17 @@ Current task: D3 - Creating Transaction model
 - backend/tests/conftest.py (updated with test fixtures)
 - backend/app/main.py (registered category router)
 
+### D3: Transaction model + migration
+- backend/app/features/transactions/models.py
+- backend/app/features/transactions/schemas.py
+- backend/alembic/versions/e233d0c71ed4_add_transactions_table.py
+- backend/alembic/env.py (imported Transaction model)
+- backend/app/features/auth/models.py (added transactions relationship)
+
 ## Next Steps
-1. Create Transaction model with all Finanzguru fields
-2. Create migration for transactions table
-3. Implement Finanzguru XLSX parser with pandas
+1. Implement Finanzguru XLSX parser with pandas/openpyxl
+2. Write parser tests with sample data
+3. Implement transaction import endpoint with duplicate detection
 
 ## Blockers
 None
