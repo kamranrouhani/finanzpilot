@@ -16,7 +16,7 @@ Current task: D13 - Documentation
 - [x] D10: Frontend: Transaction list page <- COMPLETE
 - [x] D11: Frontend: Dashboard with stats <- COMPLETE
 - [ ] D12: E2E test: import flow <- SKIPPED (tests need Docker)
-- [x] D13: Documentation <- IN PROGRESS
+- [x] D13: Documentation <- COMPLETE
 
 ## Completed Files
 ### D1: Category & TaxCategory models + seed data
