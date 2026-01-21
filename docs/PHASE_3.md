@@ -101,12 +101,12 @@ Add budgets, AI insights, receipt linking, natural language queries.
 1. Build on existing code - don't recreate
 2. Write tests FIRST
 3. Mock Ollama in tests (don't require real model)
-4. Commit after each feature
+4. Commit after each feat
 5. Run full test suite before marking complete
 
 ## Git Workflow
-1. Create branch: feature/phase-3
-2. Commit after each feature
+1. Create branch: feat/phase-3
+2. Commit after each feat
 3. Run: make test before committing
 4. Create PR when all deliverables complete
 
@@ -372,7 +372,7 @@ After Phase 3, you have a fully functional app:
 **Start command:**
 ```bash
 cd ~/projects/finanzpilot
-git checkout -b feature/phase-3
+git checkout -b feat/phase-3
 claude
 # Then paste the Ralph loop prompt
 ```
@@ -384,7 +384,7 @@ After all phases complete:
 ```bash
 # Merge Phase 3
 git checkout main
-git merge feature/phase-3
+git merge feat/phase-3
 
 # Tag release
 git tag -a v1.0.0 -m "FinanzPilot v1.0.0 - Initial Release"

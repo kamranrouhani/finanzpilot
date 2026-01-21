@@ -85,12 +85,12 @@ Date format: DD.MM.YYYY
 2. Build on Phase 1 code - don't recreate
 3. Write tests FIRST, then implementation
 4. Run tests after each implementation
-5. Commit after each working feature
+5. Commit after each working feat
 6. Use existing auth/user context
 
 ## Git Workflow
-1. Create branch: feature/phase-2
-2. Commit after each feature
+1. Create branch: feat/phase-2
+2. Commit after each feat
 3. Run: make test before committing
 4. Push only when all Phase 2 deliverables complete
 
@@ -331,7 +331,7 @@ Phase 3 will add:
 **Start command:**
 ```bash
 cd ~/projects/finanzpilot
-git checkout -b feature/phase-2
+git checkout -b feat/phase-2
 claude
 # Then paste the Ralph loop prompt
 ```

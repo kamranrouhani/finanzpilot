@@ -113,7 +113,7 @@ afterAll(() => server.close());
 2. Import Finanzguru data
 3. Upload receipt and view OCR result
 4. Create and track budget
-5. Use chat feature
+5. Use chat feat
 
 ### Page Object Pattern
 ```typescript

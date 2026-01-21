@@ -3,7 +3,8 @@
     "allow": [
       "Bash(docker compose:*)",
       "Bash(docker run:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(ollama list:*)"
     ]
   }
 }

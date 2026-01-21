@@ -104,9 +104,9 @@ finanzpilot/
 ```
 
 ## Git Workflow
-1. All work happens on `feature/<name>` branches
+1. All work happens on `feat/<name>` branches
 2. Write tests FIRST (TDD approach)
-3. Implement feature to pass tests
+3. Implement feat to pass tests
 4. Run tests locally: `make test`
 5. Run linting: `make lint`
 6. If local CI passes, push and create PR
