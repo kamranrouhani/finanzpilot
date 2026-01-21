@@ -90,6 +90,25 @@ async def create_category(db: AsyncSession, data: CategoryCreate) -> Category:
     return category
 
 
+async def _get_descendant_ids(db: AsyncSession, category_id: UUID) -> set[UUID]:
+    """Get all descendant category IDs recursively."""
+    # Use a recursive CTE to get all descendants
+    from sqlalchemy import text
+
+    query = text("""
+        WITH RECURSIVE descendants AS (
+            SELECT id FROM categories WHERE parent_id = :category_id
+            UNION ALL
+            SELECT c.id FROM categories c
+            INNER JOIN descendants d ON c.parent_id = d.id
+        )
+        SELECT id FROM descendants
+    """)
+
+    result = await db.execute(query, {"category_id": category_id})
+    return {row[0] for row in result.fetchall()}
+
+
 async def update_category(
     db: AsyncSession, category_id: UUID, data: CategoryUpdate
 ) -> Optional[Category]:
@@ -98,8 +117,23 @@ async def update_category(
     if not category:
         return None
 
-    # Update only provided fields
     update_data = data.model_dump(exclude_unset=True)
+
+    # Validate parent_id to prevent circular references and self-references
+    if "parent_id" in update_data:
+        new_parent_id = update_data["parent_id"]
+
+        # Prevent self-reference
+        if new_parent_id == category_id:
+            raise ValueError("Category cannot be its own parent")
+
+        # Prevent circular reference (new parent is a descendant)
+        if new_parent_id is not None:
+            descendant_ids = await _get_descendant_ids(db, category_id)
+            if new_parent_id in descendant_ids:
+                raise ValueError("Cannot set parent to a descendant category (would create circular reference)")
+
+    # Update only provided fields
     for field, value in update_data.items():
         setattr(category, field, value)
 
@@ -119,8 +153,9 @@ async def delete_category(db: AsyncSession, category_id: UUID) -> None:
     if not category:
         raise CategoryNotFoundError(f"Category {category_id} not found")
 
-    # Check if has children
-    if category.children:
+    # Check if has children (exclude self-referential categories)
+    actual_children = [child for child in category.children if child.id != category_id]
+    if actual_children:
         raise ValueError("Cannot delete category with children")
 
     # Check if has transactions (import here to avoid circular dependency)
