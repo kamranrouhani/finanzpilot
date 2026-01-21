@@ -3,7 +3,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile, HTTPException, status
@@ -148,6 +148,12 @@ class TransactionService:
             Import statistics
         """
         # Validate file type
+        if not file.filename:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Filename is required"
+            )
+
         allowed_extensions = [".xlsx", ".csv"]
         file_ext = os.path.splitext(file.filename)[1].lower()
         if file_ext not in allowed_extensions:
@@ -194,7 +200,7 @@ class TransactionService:
             # Process each transaction
             for tx_data in parsed_transactions:
                 try:
-                    # Skip duplicates
+                    # Skip duplicates (check both DB and current batch)
                     if skip_duplicates and tx_data["import_hash"] in existing_hashes:
                         stats["skipped"] += 1
                         continue
@@ -211,6 +217,27 @@ class TransactionService:
                         tx_data.get("subcategory")
                     )
 
+                    # Parse tags - split comma-separated string into array
+                    tags = None
+                    if tx_data.get("tags"):
+                        tags = [tag.strip() for tag in tx_data["tags"].split(",") if tag.strip()]
+
+                    # Parse balance_after from balance field
+                    balance_after = None
+                    if tx_data.get("balance"):
+                        try:
+                            balance_after = Decimal(str(tx_data["balance"]))
+                        except (InvalidOperation, ValueError):
+                            pass
+
+                    # Parse fg_analysis_amount from analysis_amount field
+                    fg_analysis_amount = None
+                    if tx_data.get("analysis_amount"):
+                        try:
+                            fg_analysis_amount = Decimal(str(tx_data["analysis_amount"]))
+                        except (InvalidOperation, ValueError):
+                            pass
+
                     # Create transaction
                     transaction = Transaction(
                         user_id=user_id,
@@ -219,6 +246,7 @@ class TransactionService:
                         date=tx_data["date"],
                         amount=tx_data["amount"],
                         currency=tx_data.get("currency", "EUR"),
+                        balance_after=balance_after,
                         counterparty=tx_data.get("counterparty"),
                         counterparty_iban=tx_data.get("counterparty_iban"),
                         description=tx_data.get("description"),
@@ -236,11 +264,12 @@ class TransactionService:
                         fg_is_transfer=tx_data.get("fg_is_transfer", False),
                         fg_excluded_from_budget=tx_data.get("fg_excluded_from_budget", False),
                         fg_transaction_type=tx_data.get("fg_transaction_type"),
+                        fg_analysis_amount=fg_analysis_amount,
                         fg_week=tx_data.get("fg_week"),
                         fg_month=tx_data.get("fg_month"),
                         fg_quarter=tx_data.get("fg_quarter"),
                         fg_year=tx_data.get("fg_year"),
-                        tags=[tx_data["tags"]] if tx_data.get("tags") else None,
+                        tags=tags,
                         notes=tx_data.get("notes"),
                         source="finanzguru",
                         import_hash=tx_data["import_hash"],
@@ -248,6 +277,10 @@ class TransactionService:
 
                     self.db.add(transaction)
                     stats["imported"] += 1
+
+                    # Add hash to existing_hashes to prevent duplicates within this batch
+                    if tx_data["import_hash"]:
+                        existing_hashes.add(tx_data["import_hash"])
 
                 except Exception as e:
                     stats["errors"] += 1

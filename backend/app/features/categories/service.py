@@ -2,7 +2,7 @@
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -123,8 +123,20 @@ async def delete_category(db: AsyncSession, category_id: UUID) -> None:
     if category.children:
         raise ValueError("Cannot delete category with children")
 
-    # TODO: Check if has transactions (when transaction model exists)
-    # For now, allow deletion
+    # Check if has transactions (import here to avoid circular dependency)
+    from app.features.transactions.models import Transaction
+
+    transaction_count_query = select(func.count()).select_from(Transaction).where(
+        or_(
+            Transaction.category_id == category_id,
+            Transaction.subcategory_id == category_id
+        )
+    )
+    result = await db.execute(transaction_count_query)
+    transaction_count = result.scalar()
+
+    if transaction_count > 0:
+        raise ValueError(f"Cannot delete category with {transaction_count} associated transaction(s)")
 
     await db.delete(category)
     await db.commit()
