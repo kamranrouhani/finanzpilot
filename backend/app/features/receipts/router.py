@@ -1,11 +1,16 @@
 """Receipt routes."""
+import os
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.features.auth.models import User
 from app.features.receipts.schemas import ReceiptListResponse, ReceiptResponse
-from app.features.receipts.service import (create_receipt, get_user_receipts,
+from app.features.receipts.service import (cleanup_receipt_file, create_receipt,
+                                           get_user_receipts,
                                            process_receipt_ocr,
                                            save_receipt_file)
 from app.shared.dependencies import get_current_user
@@ -30,13 +35,40 @@ async def upload_receipt(
     Returns:
         ReceiptResponse: Created receipt
     """
-    # Validate file type
-    if not file.content_type or not file.content_type.startswith(
-        ("image/", "application/pdf")
-    ):
+    # Validate file size
+    if hasattr(file, 'size') and file.size and file.size > settings.MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE // (1024 * 1024)}MB",
+        )
+
+    # Validate file extension
+    if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only image and PDF files are allowed",
+            detail="File must have a filename",
+        )
+
+    file_extension = os.path.splitext(file.filename.lower())[1]
+    if file_extension not in settings.ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File type not allowed. Allowed extensions: {', '.join(settings.ALLOWED_EXTENSIONS)}",
+        )
+
+    # Validate content type (additional check)
+    allowed_content_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".pdf": "application/pdf"
+    }
+
+    expected_content_type = allowed_content_types.get(file_extension)
+    if expected_content_type and file.content_type != expected_content_type:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Content type mismatch. Expected {expected_content_type} for {file_extension} files",
         )
 
     # Save file
@@ -44,18 +76,30 @@ async def upload_receipt(
         file.file, file.filename or "unknown", str(current_user.id)
     )
 
-    # Create receipt record
-    receipt = await create_receipt(
-        db,
-        user_id=str(current_user.id),
-        filename=file.filename or "unknown",
-        stored_path=stored_path,
-        file_size=file_size,
-        mime_type=file.content_type,
-    )
+    receipt = None
+    try:
+        # Create receipt record
+        receipt = await create_receipt(
+            db,
+            user_id=str(current_user.id),
+            filename=file.filename or "unknown",
+            stored_path=stored_path,
+            file_size=file_size,
+            mime_type=file.content_type,
+        )
+    except Exception:
+        # If database insert fails, clean up the saved file
+        await cleanup_receipt_file(stored_path)
+        raise
 
-    # Process OCR (async in background would be better in production)
-    receipt = await process_receipt_ocr(db, receipt)
+    try:
+        # Process OCR (async in background would be better in production)
+        receipt = await process_receipt_ocr(db, receipt)
+    except Exception:
+        # If OCR fails, keep the file and database record
+        # The receipt status will be set to "failed" in process_receipt_ocr
+        # User can retry OCR later
+        pass
 
     return ReceiptResponse.model_validate(receipt)
 
@@ -85,7 +129,7 @@ async def list_receipts(
 
 @router.get("/{receipt_id}", response_model=ReceiptResponse)
 async def get_receipt(
-    receipt_id: str,
+    receipt_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ReceiptResponse:
