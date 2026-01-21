@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from jose import jwt
 from passlib.context import CryptContext
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -73,11 +74,23 @@ async def register_user(db: AsyncSession, user_data: UserCreate) -> User:
         password_hash=hash_password(user_data.password),
     )
 
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
-    return user
+    try:
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return user
+    except IntegrityError:
+        # Check if this is a unique constraint violation on username
+        await db.rollback()
+        # Re-check if user exists (in case of race condition)
+        result = await db.execute(select(User).where(User.username == user_data.username))
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already registered",
+            )
+        # If it's not a username conflict, re-raise the original error
+        raise
 
 
 async def authenticate_user(db: AsyncSession, username: str, password: str) -> User:
