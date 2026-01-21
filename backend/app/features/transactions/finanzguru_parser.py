@@ -177,8 +177,14 @@ def parse_finanzguru_file(file_path: str) -> List[Dict[str, Any]]:
             # Parse core fields
             transaction_date = parse_german_date(row.get("Buchungstag"))
             amount = parse_german_amount(row.get("Betrag"))
-            counterparty = str(row.get("Beguenstigter/Auftraggeber", "")).strip()
-            description = str(row.get("Verwendungszweck", "")).strip()
+
+            # Handle counterparty - check for NaN to avoid "nan" strings
+            counterparty_value = row.get("Beguenstigter/Auftraggeber", "")
+            counterparty = "" if pd.isna(counterparty_value) else str(counterparty_value).strip()
+
+            # Handle description - check for NaN to avoid "nan" strings
+            description_value = row.get("Verwendungszweck", "")
+            description = "" if pd.isna(description_value) else str(description_value).strip()
 
             # Generate import hash for duplicate detection
             import_hash = generate_import_hash(

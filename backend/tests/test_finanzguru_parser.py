@@ -209,3 +209,35 @@ class TestFinanzguruParser:
         # Check fg_excluded_from_budget
         assert transactions[2]["fg_excluded_from_budget"] is True  # Salary
         assert transactions[0]["fg_excluded_from_budget"] is False  # REWE
+
+    def test_empty_counterparty_description_become_empty_strings_not_nan(self):
+        """Test that empty counterparty and description fields become empty strings, not 'nan'."""
+        import pandas as pd
+        from app.features.transactions.finanzguru_parser import parse_finanzguru_file
+
+        # Create test data with empty counterparty and description (represented as NaN)
+        test_data = {
+            "Buchungstag": ["15.01.2024"],
+            "Betrag": ["-45,67"],
+            "Beguenstigter/Auftraggeber": [pd.NA],  # Empty cell becomes NaN
+            "Verwendungszweck": [pd.NA],  # Empty cell becomes NaN
+        }
+        df = pd.DataFrame(test_data)
+
+        # Temporarily write to a test file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+            df.to_csv(f.name, index=False)
+            test_file = f.name
+
+        try:
+            transactions = parse_finanzguru_file(test_file)
+
+            assert len(transactions) == 1
+            t = transactions[0]
+
+            # These should be empty strings, not "nan"
+            assert t["counterparty"] == ""
+            assert t["description"] == ""
+
+        finally:
+            os.unlink(test_file)
