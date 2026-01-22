@@ -11,14 +11,8 @@ COPY package.json pnpm-lock.yaml* ./
 # Install dependencies
 RUN pnpm install
 
-# Copy all files
-COPY . .
-
-# Build the application
-RUN pnpm build
-
 # Expose port
 EXPOSE 3000
 
-# Start the production server
-CMD ["pnpm", "start"]
+# Start the development server with hot reload
+CMD ["pnpm", "dev"]
