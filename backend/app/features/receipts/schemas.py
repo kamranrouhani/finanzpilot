@@ -11,6 +11,7 @@ class ReceiptResponse(BaseModel):
 
     id: UUID
     user_id: UUID
+    transaction_id: Optional[UUID] = None
     original_filename: str
     file_size: Optional[int]
     mime_type: Optional[str]
@@ -30,3 +31,29 @@ class ReceiptListResponse(BaseModel):
 
     receipts: list[ReceiptResponse]
     total: int
+
+
+class TransactionMatch(BaseModel):
+    """Schema for a matched transaction."""
+
+    id: UUID
+    date: str
+    amount: str
+    counterparty: Optional[str]
+    description: Optional[str]
+    confidence: float = Field(..., ge=0, le=100, description="Confidence score 0-100")
+
+    model_config = {"from_attributes": True}
+
+
+class ReceiptMatchesResponse(BaseModel):
+    """Schema for receipt matching results."""
+
+    receipt_id: UUID
+    matches: list[TransactionMatch]
+
+
+class LinkReceiptRequest(BaseModel):
+    """Schema for linking receipt to transaction."""
+
+    transaction_id: UUID
