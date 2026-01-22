@@ -102,13 +102,19 @@ async def update_category(
     current_user: User = Depends(get_current_user),
 ) -> CategoryResponse:
     """Update an existing category."""
-    category = await service.update_category(db, category_id, category_data)
-    if not category:
+    try:
+        category = await service.update_category(db, category_id, category_data)
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Category not found",
+            )
+        return category
+    except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Category not found",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         )
-    return category
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)

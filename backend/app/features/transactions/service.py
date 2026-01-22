@@ -348,8 +348,13 @@ class TransactionService:
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
     ) -> Dict[str, Any]:
-        """Get transaction statistics."""
-        query = select(Transaction).where(Transaction.user_id == user_id)
+        """Get transaction statistics using database aggregation."""
+        # Use database-level aggregation for better performance
+        query = select(
+            func.sum(func.case((Transaction.amount > 0, Transaction.amount), else_=0)).label("total_income"),
+            func.sum(func.case((Transaction.amount < 0, func.abs(Transaction.amount)), else_=0)).label("total_expenses"),
+            func.count(Transaction.id).label("transaction_count")
+        ).where(Transaction.user_id == user_id)
 
         if start_date:
             query = query.where(Transaction.date >= start_date)
@@ -357,13 +362,13 @@ class TransactionService:
             query = query.where(Transaction.date <= end_date)
 
         result = await self.db.execute(query)
-        transactions = result.scalars().all()
+        row = result.first()
 
-        # Calculate statistics
-        total_income = sum(t.amount for t in transactions if t.amount > 0)
-        total_expenses = sum(abs(t.amount) for t in transactions if t.amount < 0)
+        # Extract aggregated values (handle None values from empty results)
+        total_income = row.total_income or 0
+        total_expenses = row.total_expenses or 0
         balance = total_income - total_expenses
-        count = len(transactions)
+        count = row.transaction_count or 0
 
         return {
             "total_income": float(total_income),
