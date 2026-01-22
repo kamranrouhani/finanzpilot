@@ -14,9 +14,20 @@ class UserCreate(BaseModel):
     @field_validator("username")
     @classmethod
     def username_alphanumeric(cls, v: str) -> str:
-        """Validate username is alphanumeric."""
+        """Validate username is alphanumeric or email format."""
+        # Allow email addresses (contains @)
+        if "@" in v:
+            # Basic email validation - must have @ and . after @
+            if v.count("@") != 1:
+                raise ValueError("Invalid email format")
+            local, domain = v.split("@")
+            if not local or not domain or "." not in domain:
+                raise ValueError("Invalid email format")
+            return v
+
+        # Otherwise validate as alphanumeric username
         if not v.replace("_", "").replace("-", "").isalnum():
-            raise ValueError("Username must be alphanumeric (can include _ and -)")
+            raise ValueError("Username must be alphanumeric (can include _ and -) or a valid email")
         return v
 
 
