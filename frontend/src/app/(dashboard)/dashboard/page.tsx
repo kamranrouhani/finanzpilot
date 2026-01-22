@@ -69,6 +69,9 @@ export default function DashboardPage() {
               <Button variant="outline" size="sm" onClick={() => router.push('/transactions')}>
                 Transactions
               </Button>
+              <Button variant="outline" size="sm" onClick={() => router.push('/budgets')}>
+                Budgets
+              </Button>
               <Button variant="outline" size="sm" onClick={() => router.push('/import')}>
                 Import
               </Button>

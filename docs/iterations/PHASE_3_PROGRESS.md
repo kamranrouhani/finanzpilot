@@ -1,11 +1,11 @@
 # Phase 3 Progress
-Last updated: 2026-01-22 03:00:00
-Current task: Building budget UI components
+Last updated: 2026-01-22 03:30:00
+Current task: Implementing receipt-transaction matching logic
 
 ## Deliverables
 - [x] D1: Budget model + migration + CRUD endpoints + tests
 - [x] D2: Budget vs actual calculation logic + tests
-- [ ] D3: Budget UI (list, form, progress bars)
+- [x] D3: Budget UI (list, form, progress bars)
 - [ ] D4: Receipt-Transaction matching logic + tests
 - [ ] D5: Receipt linking UI
 - [ ] D6: AI category suggestion endpoint + tests (mock Ollama in tests)
@@ -19,19 +19,29 @@ Current task: Building budget UI components
 - [ ] D14: Final documentation + README
 
 ## Completed Files
+### Backend
 - backend/app/features/budgets/models.py (Budget model)
 - backend/app/features/budgets/schemas.py (Pydantic schemas)
-- backend/app/features/budgets/service.py (Business logic)
+- backend/app/features/budgets/service.py (Business logic with spent calculation)
 - backend/app/features/budgets/router.py (API endpoints)
 - backend/alembic/versions/004_add_budgets_table.py (Migration)
 - backend/tests/test_budgets.py (Comprehensive tests)
 - backend/app/main.py (Updated with budget router)
 - backend/app/features/auth/models.py (Updated User model)
 
+### Frontend
+- frontend/src/types/budget.ts (TypeScript types)
+- frontend/src/lib/api/budgets.ts (API client)
+- frontend/src/app/(dashboard)/budgets/page.tsx (Budgets page)
+- frontend/src/components/features/budgets/BudgetProgressCard.tsx (Progress card component)
+- frontend/src/components/features/budgets/CreateBudgetDialog.tsx (Create dialog)
+- frontend/src/components/features/auth/DashboardNav.tsx (Shared navigation)
+- frontend/src/app/(dashboard)/dashboard/page.tsx (Updated with Budgets link)
+
 ## Blockers
 None currently
 
 ## Next Steps
-1. Build budget UI components (list, form, progress bars)
-2. Implement receipt-transaction matching logic
-3. Build receipt linking UI
+1. Implement receipt-transaction matching logic
+2. Build receipt linking UI
+3. Implement AI category suggestion endpoint with tests
