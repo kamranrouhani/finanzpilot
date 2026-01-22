@@ -11,7 +11,7 @@ class BudgetBase(BaseModel):
     """Base budget schema with common fields."""
 
     category_id: UUID = Field(..., description="Category ID for this budget")
-    amount: Decimal = Field(..., ge=0, decimal_places=2, description="Budget amount in EUR")
+    amount: Decimal = Field(..., ge=0, description="Budget amount in EUR")
     period: str = Field(default="monthly", description="Budget period: monthly, weekly, yearly")
     start_date: date = Field(..., description="Budget start date")
     end_date: Optional[date] = Field(None, description="Optional budget end date")
@@ -28,7 +28,7 @@ class BudgetUpdate(BaseModel):
     """Schema for updating an existing budget."""
 
     category_id: Optional[UUID] = None
-    amount: Optional[Decimal] = Field(None, ge=0, decimal_places=2)
+    amount: Optional[Decimal] = Field(None, ge=0)
     period: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None

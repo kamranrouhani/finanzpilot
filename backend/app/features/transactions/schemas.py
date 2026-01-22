@@ -12,9 +12,9 @@ class TransactionBase(BaseModel):
 
     # Core transaction data
     date: date
-    amount: Decimal = Field(..., decimal_places=2)
+    amount: Decimal = Field(..., description="Transaction amount")
     currency: str = Field(default="EUR", max_length=3)
-    balance_after: Optional[Decimal] = Field(None, decimal_places=2)
+    balance_after: Optional[Decimal] = Field(None, description="Balance after transaction")
 
     # Account info
     account_name: Optional[str] = Field(None, max_length=100)
