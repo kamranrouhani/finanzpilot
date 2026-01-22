@@ -56,7 +56,15 @@ export default function CreateBudgetDialog({
       await createBudget(formData, token);
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create budget');
+      let message = 'Failed to create budget. Please try again.';
+      if (err instanceof Error) {
+        if (err.message.includes('400') || err.message.includes('invalid')) {
+          message = 'Invalid budget data. Please check your inputs.';
+        } else if (err.message.includes('404') || err.message.includes('not found')) {
+          message = 'Selected category not found. Please refresh and try again.';
+        }
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }

@@ -37,7 +37,17 @@ export default function BudgetsPage() {
       setSummary(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch budgets');
+      // Provide user-friendly error messages
+      let message = 'Unable to load budgets. Please try again.';
+      if (err instanceof Error) {
+        if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+          message = 'Your session has expired. Please log in again.';
+          setTimeout(() => router.push('/login'), 2000);
+        } else if (err.message.includes('Network') || err.message.includes('fetch')) {
+          message = 'Network error. Please check your connection.';
+        }
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -59,7 +69,11 @@ export default function BudgetsPage() {
       await deleteBudget(budgetId, token);
       await fetchSummary(); // Refresh the list
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete budget');
+      let message = 'Failed to delete budget. Please try again.';
+      if (err instanceof Error && err.message.includes('404')) {
+        message = 'Budget not found. It may have already been deleted.';
+      }
+      setError(message);
     }
   };
 

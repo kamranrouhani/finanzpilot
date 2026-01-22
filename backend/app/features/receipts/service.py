@@ -2,7 +2,7 @@
 import asyncio
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import BinaryIO, Optional
@@ -13,6 +13,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.features.receipts.models import Receipt
 from app.features.transactions.models import Transaction
+
+# Confidence scoring weights (total = 100 points max)
+CONFIDENCE_WEIGHTS = {
+    'date_exact': 40,         # Same day
+    'date_within_2_days': 30, # Within 2 days
+    'date_within_7_days': 20, # Within 7 days
+    'amount_exact': 40,       # Exact match
+    'amount_within_cent': 35, # Within 1 cent
+    'amount_within_euro': 25, # Within 1 euro
+    'amount_within_5_euro': 15, # Within 5 euros
+    'merchant_exact': 20,     # Exact or substring match
+    'merchant_partial': 10,   # Partial word match
+}
+CONFIDENCE_MIN_THRESHOLD = 10  # Minimum confidence to include in results
+
+
+def _parse_receipt_date(date_str: str) -> Optional[date]:
+    """Parse receipt date string to date object.
+
+    Args:
+        date_str: Date string in YYYY-MM-DD format
+
+    Returns:
+        Parsed date or None if invalid
+    """
+    if not isinstance(date_str, str):
+        return None
+
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
 
 
 async def cleanup_receipt_file(file_path: str) -> None:
@@ -204,7 +236,8 @@ async def find_matching_transactions(
     """
     # Extract data from receipt
     extracted_data = receipt.extracted_data or {}
-    receipt_date = extracted_data.get('date') if isinstance(extracted_data.get('date'), str) else None
+    receipt_date_str = extracted_data.get('date') if isinstance(extracted_data.get('date'), str) else None
+    receipt_date = _parse_receipt_date(receipt_date_str) if receipt_date_str else None
     receipt_total = extracted_data.get('total')
     merchant = extracted_data.get('merchant', '').lower()
 
@@ -213,18 +246,14 @@ async def find_matching_transactions(
 
     # If we have a date, narrow down to +/- 7 days
     if receipt_date:
-        try:
-            date_obj = datetime.strptime(receipt_date, '%Y-%m-%d').date()
-            start_date = date_obj - timedelta(days=7)
-            end_date = date_obj + timedelta(days=7)
-            query = query.where(
-                and_(
-                    Transaction.date >= start_date,
-                    Transaction.date <= end_date
-                )
+        start_date = receipt_date - timedelta(days=7)
+        end_date = receipt_date + timedelta(days=7)
+        query = query.where(
+            and_(
+                Transaction.date >= start_date,
+                Transaction.date <= end_date
             )
-        except (ValueError, TypeError):
-            pass  # Invalid date, skip date filtering
+        )
 
     # Execute query
     result = await db.execute(query.limit(100))  # Limit to prevent huge result sets
@@ -237,17 +266,13 @@ async def find_matching_transactions(
 
         # Date matching (40 points max)
         if receipt_date:
-            try:
-                date_obj = datetime.strptime(receipt_date, '%Y-%m-%d').date()
-                days_diff = abs((txn.date - date_obj).days)
-                if days_diff == 0:
-                    score += 40.0
-                elif days_diff <= 2:
-                    score += 30.0
-                elif days_diff <= 7:
-                    score += 20.0
-            except (ValueError, TypeError):
-                pass
+            days_diff = abs((txn.date - receipt_date).days)
+            if days_diff == 0:
+                score += CONFIDENCE_WEIGHTS['date_exact']
+            elif days_diff <= 2:
+                score += CONFIDENCE_WEIGHTS['date_within_2_days']
+            elif days_diff <= 7:
+                score += CONFIDENCE_WEIGHTS['date_within_7_days']
 
         # Amount matching (40 points max)
         if receipt_total and txn.amount:
@@ -257,13 +282,13 @@ async def find_matching_transactions(
                 amount_diff = abs(receipt_amount - txn_amount)
 
                 if amount_diff == 0:
-                    score += 40.0
-                elif amount_diff <= Decimal('0.01'):  # Within 1 cent
-                    score += 35.0
-                elif amount_diff <= Decimal('1.00'):  # Within 1 euro
-                    score += 25.0
-                elif amount_diff <= Decimal('5.00'):  # Within 5 euros
-                    score += 15.0
+                    score += CONFIDENCE_WEIGHTS['amount_exact']
+                elif amount_diff <= Decimal('0.01'):
+                    score += CONFIDENCE_WEIGHTS['amount_within_cent']
+                elif amount_diff <= Decimal('1.00'):
+                    score += CONFIDENCE_WEIGHTS['amount_within_euro']
+                elif amount_diff <= Decimal('5.00'):
+                    score += CONFIDENCE_WEIGHTS['amount_within_5_euro']
             except (ValueError, TypeError, AttributeError):
                 pass
 
@@ -271,12 +296,12 @@ async def find_matching_transactions(
         if merchant and txn.counterparty:
             counterparty_lower = txn.counterparty.lower()
             if merchant in counterparty_lower or counterparty_lower in merchant:
-                score += 20.0
+                score += CONFIDENCE_WEIGHTS['merchant_exact']
             elif any(word in counterparty_lower for word in merchant.split() if len(word) > 3):
-                score += 10.0
+                score += CONFIDENCE_WEIGHTS['merchant_partial']
 
-        # Only include transactions with some confidence
-        if score >= 10.0:
+        # Only include transactions with minimum confidence
+        if score >= CONFIDENCE_MIN_THRESHOLD:
             matches.append((txn, score))
 
     # Sort by confidence score (highest first)

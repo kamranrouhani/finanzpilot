@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.budgets.models import Budget
@@ -73,14 +73,17 @@ async def calculate_budget_spent(
     period_start, period_end = _get_period_dates(budget)
 
     # Query transactions for this category in the current period
-    # Include subcategories of the budget category
+    # Include both main category and subcategories
     query = select(func.sum(Transaction.amount)).where(
         and_(
             Transaction.user_id == user_id,
             Transaction.date >= period_start,
             Transaction.date <= period_end,
             Transaction.amount < 0,  # Only expenses (negative amounts)
-            Transaction.category_id == budget.category_id
+            or_(
+                Transaction.category_id == budget.category_id,
+                Transaction.subcategory_id == budget.category_id
+            )
         )
     )
 

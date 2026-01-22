@@ -1,5 +1,6 @@
 """AI service for LLM-powered features."""
 import logging
+from functools import lru_cache
 from typing import Optional
 from uuid import UUID
 
@@ -14,21 +15,80 @@ from app.features.transactions.models import Transaction
 
 logger = logging.getLogger(__name__)
 
+# Simple cache for category list (TTL handled by server restart)
+_category_cache: Optional[list[str]] = None
 
-async def get_available_categories(db: AsyncSession) -> list[str]:
+
+async def get_available_categories(db: AsyncSession, use_cache: bool = True) -> list[str]:
     """Get list of available category names.
 
     Args:
         db: Database session
+        use_cache: Whether to use cached categories (default True)
 
     Returns:
         List of category names (parent categories only)
     """
+    global _category_cache
+
+    # Use cache if available and requested
+    if use_cache and _category_cache is not None:
+        return _category_cache
+
+    # Fetch from database
     result = await db.execute(
         select(Category.name).where(Category.parent_id.is_(None))
     )
-    categories = result.scalars().all()
-    return list(categories)
+    categories = list(result.scalars().all())
+
+    # Update cache
+    _category_cache = categories
+
+    return categories
+
+
+def _find_best_matching_category(suggested: str, available: list[str]) -> str:
+    """Find best matching category using fuzzy matching.
+
+    Args:
+        suggested: AI-suggested category name
+        available: List of available categories
+
+    Returns:
+        Best matching category name
+    """
+    if not available:
+        return "Uncategorized"
+
+    suggested_lower = suggested.lower()
+
+    # Exact match (case-insensitive)
+    for cat in available:
+        if cat.lower() == suggested_lower:
+            return cat
+
+    # Substring match
+    for cat in available:
+        if suggested_lower in cat.lower() or cat.lower() in suggested_lower:
+            return cat
+
+    # Word matching (for compound categories)
+    suggested_words = set(suggested_lower.split())
+    best_match = None
+    best_score = 0
+
+    for cat in available:
+        cat_words = set(cat.lower().split())
+        common_words = suggested_words & cat_words
+        if len(common_words) > best_score:
+            best_score = len(common_words)
+            best_match = cat
+
+    if best_match and best_score > 0:
+        return best_match
+
+    # Default to first category as last resort
+    return available[0]
 
 
 async def suggest_category_for_transaction(
@@ -75,24 +135,33 @@ async def suggest_category_for_transaction(
         # Extract and validate JSON
         result = ollama_client.extract_json_from_response(response)
 
-        # Validate category exists
+        # Validate and match category
         suggested_category = result.get("category", "")
+        confidence = min(max(float(result.get("confidence", 0.5)), 0.0), 1.0)
+
         if suggested_category not in categories:
-            # Find closest match or default to first category
-            suggested_category = categories[0] if categories else "Uncategorized"
-            result["confidence"] = 0.1  # Low confidence for fallback
+            # Use fuzzy matching to find best category
+            suggested_category = _find_best_matching_category(suggested_category, categories)
+            # Reduce confidence if we had to fuzzy match
+            confidence *= 0.7
 
         return CategorySuggestion(
             category=suggested_category,
-            confidence=min(max(float(result.get("confidence", 0.5)), 0.0), 1.0),
+            confidence=confidence,
             reasoning=result.get("reasoning")
         )
 
     except Exception as e:
         logger.error(f"AI category suggestion failed: {str(e)}")
-        # Return a safe fallback
+        # Return a safe fallback - prefer income/expense based category if possible
+        fallback_category = categories[0] if categories else "Uncategorized"
+        if amount < 0 and any('expense' in c.lower() for c in categories):
+            fallback_category = next(c for c in categories if 'expense' in c.lower())
+        elif amount > 0 and any('income' in c.lower() for c in categories):
+            fallback_category = next(c for c in categories if 'income' in c.lower())
+
         return CategorySuggestion(
-            category=categories[0] if categories else "Uncategorized",
+            category=fallback_category,
             confidence=0.1,
             reasoning=f"AI error: {str(e)[:100]}"
         )
