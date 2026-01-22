@@ -8,11 +8,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.features.auth.models import User
-from app.features.receipts.schemas import ReceiptListResponse, ReceiptResponse
+from app.features.receipts.schemas import (LinkReceiptRequest,
+                                          ReceiptListResponse,
+                                          ReceiptMatchesResponse,
+                                          ReceiptResponse,
+                                          TransactionMatch)
 from app.features.receipts.service import (cleanup_receipt_file, create_receipt,
+                                           find_matching_transactions,
                                            get_user_receipts,
+                                           link_receipt_to_transaction,
                                            process_receipt_ocr,
-                                           save_receipt_file)
+                                           save_receipt_file,
+                                           unlink_receipt_from_transaction)
 from app.shared.dependencies import get_current_user
 
 router = APIRouter(prefix="/receipts", tags=["Receipts"])
@@ -154,6 +161,132 @@ async def get_receipt(
         )
     )
     receipt = result.scalar_one_or_none()
+
+    if not receipt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Receipt not found",
+        )
+
+    return ReceiptResponse.model_validate(receipt)
+
+
+@router.get("/{receipt_id}/matches", response_model=ReceiptMatchesResponse)
+async def get_receipt_matches(
+    receipt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ReceiptMatchesResponse:
+    """
+    Find transactions that match a receipt.
+
+    Args:
+        receipt_id: Receipt ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        ReceiptMatchesResponse: List of matching transactions with confidence scores
+    """
+    from sqlalchemy import select
+
+    from app.features.receipts.models import Receipt
+
+    # Get receipt
+    result = await db.execute(
+        select(Receipt).where(
+            Receipt.id == receipt_id, Receipt.user_id == current_user.id
+        )
+    )
+    receipt = result.scalar_one_or_none()
+
+    if not receipt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Receipt not found",
+        )
+
+    # Find matching transactions
+    matches = await find_matching_transactions(
+        db, receipt, str(current_user.id)
+    )
+
+    # Convert to response schema
+    match_responses = [
+        TransactionMatch(
+            id=txn.id,
+            date=str(txn.date),
+            amount=str(txn.amount),
+            counterparty=txn.counterparty,
+            description=txn.description,
+            confidence=confidence
+        )
+        for txn, confidence in matches
+    ]
+
+    return ReceiptMatchesResponse(
+        receipt_id=receipt_id,
+        matches=match_responses
+    )
+
+
+@router.post("/{receipt_id}/link", response_model=ReceiptResponse)
+async def link_receipt(
+    receipt_id: UUID,
+    link_data: LinkReceiptRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ReceiptResponse:
+    """
+    Link a receipt to a transaction.
+
+    Args:
+        receipt_id: Receipt ID
+        link_data: Transaction ID to link
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        ReceiptResponse: Updated receipt
+    """
+    receipt = await link_receipt_to_transaction(
+        db,
+        str(receipt_id),
+        str(link_data.transaction_id),
+        str(current_user.id)
+    )
+
+    if not receipt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Receipt or transaction not found",
+        )
+
+    return ReceiptResponse.model_validate(receipt)
+
+
+@router.post("/{receipt_id}/unlink", response_model=ReceiptResponse)
+async def unlink_receipt(
+    receipt_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ReceiptResponse:
+    """
+    Unlink a receipt from its transaction.
+
+    Args:
+        receipt_id: Receipt ID
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        ReceiptResponse: Updated receipt
+    """
+    receipt = await unlink_receipt_from_transaction(
+        db,
+        str(receipt_id),
+        str(current_user.id)
+    )
 
     if not receipt:
         raise HTTPException(

@@ -2,15 +2,17 @@
 import asyncio
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Optional
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.features.receipts.models import Receipt
+from app.features.transactions.models import Transaction
 
 
 async def cleanup_receipt_file(file_path: str) -> None:
@@ -173,5 +175,200 @@ async def process_receipt_ocr(db: AsyncSession, receipt: Receipt) -> Receipt:
         receipt.error_message = str(e)
         await db.commit()
         await db.refresh(receipt)
+
+    return receipt
+
+
+async def find_matching_transactions(
+    db: AsyncSession,
+    receipt: Receipt,
+    user_id: str,
+    max_results: int = 10
+) -> list[tuple[Transaction, float]]:
+    """
+    Find transactions that potentially match a receipt.
+
+    Matches are based on:
+    - Date proximity (within 7 days)
+    - Amount similarity (if available in extracted_data)
+    - Merchant name matching (if available)
+
+    Args:
+        db: Database session
+        receipt: Receipt to match
+        user_id: User ID
+        max_results: Maximum number of results to return
+
+    Returns:
+        List of tuples (Transaction, confidence_score) sorted by confidence
+    """
+    # Extract data from receipt
+    extracted_data = receipt.extracted_data or {}
+    receipt_date = extracted_data.get('date') if isinstance(extracted_data.get('date'), str) else None
+    receipt_total = extracted_data.get('total')
+    merchant = extracted_data.get('merchant', '').lower()
+
+    # Build base query
+    query = select(Transaction).where(Transaction.user_id == user_id)
+
+    # If we have a date, narrow down to +/- 7 days
+    if receipt_date:
+        try:
+            date_obj = datetime.strptime(receipt_date, '%Y-%m-%d').date()
+            start_date = date_obj - timedelta(days=7)
+            end_date = date_obj + timedelta(days=7)
+            query = query.where(
+                and_(
+                    Transaction.date >= start_date,
+                    Transaction.date <= end_date
+                )
+            )
+        except (ValueError, TypeError):
+            pass  # Invalid date, skip date filtering
+
+    # Execute query
+    result = await db.execute(query.limit(100))  # Limit to prevent huge result sets
+    transactions = list(result.scalars().all())
+
+    # Calculate confidence scores
+    matches = []
+    for txn in transactions:
+        score = 0.0
+
+        # Date matching (40 points max)
+        if receipt_date:
+            try:
+                date_obj = datetime.strptime(receipt_date, '%Y-%m-%d').date()
+                days_diff = abs((txn.date - date_obj).days)
+                if days_diff == 0:
+                    score += 40.0
+                elif days_diff <= 2:
+                    score += 30.0
+                elif days_diff <= 7:
+                    score += 20.0
+            except (ValueError, TypeError):
+                pass
+
+        # Amount matching (40 points max)
+        if receipt_total and txn.amount:
+            try:
+                receipt_amount = abs(Decimal(str(receipt_total)))
+                txn_amount = abs(txn.amount)
+                amount_diff = abs(receipt_amount - txn_amount)
+
+                if amount_diff == 0:
+                    score += 40.0
+                elif amount_diff <= Decimal('0.01'):  # Within 1 cent
+                    score += 35.0
+                elif amount_diff <= Decimal('1.00'):  # Within 1 euro
+                    score += 25.0
+                elif amount_diff <= Decimal('5.00'):  # Within 5 euros
+                    score += 15.0
+            except (ValueError, TypeError, AttributeError):
+                pass
+
+        # Merchant matching (20 points max)
+        if merchant and txn.counterparty:
+            counterparty_lower = txn.counterparty.lower()
+            if merchant in counterparty_lower or counterparty_lower in merchant:
+                score += 20.0
+            elif any(word in counterparty_lower for word in merchant.split() if len(word) > 3):
+                score += 10.0
+
+        # Only include transactions with some confidence
+        if score >= 10.0:
+            matches.append((txn, score))
+
+    # Sort by confidence score (highest first)
+    matches.sort(key=lambda x: x[1], reverse=True)
+
+    return matches[:max_results]
+
+
+async def link_receipt_to_transaction(
+    db: AsyncSession,
+    receipt_id: str,
+    transaction_id: str,
+    user_id: str
+) -> Optional[Receipt]:
+    """
+    Link a receipt to a transaction.
+
+    Args:
+        db: Database session
+        receipt_id: Receipt ID
+        transaction_id: Transaction ID
+        user_id: User ID (for security check)
+
+    Returns:
+        Updated Receipt or None if not found/unauthorized
+    """
+    # Get receipt and verify ownership
+    receipt_result = await db.execute(
+        select(Receipt).where(
+            and_(
+                Receipt.id == receipt_id,
+                Receipt.user_id == user_id
+            )
+        )
+    )
+    receipt = receipt_result.scalar_one_or_none()
+    if not receipt:
+        return None
+
+    # Verify transaction exists and belongs to user
+    txn_result = await db.execute(
+        select(Transaction).where(
+            and_(
+                Transaction.id == transaction_id,
+                Transaction.user_id == user_id
+            )
+        )
+    )
+    transaction = txn_result.scalar_one_or_none()
+    if not transaction:
+        return None
+
+    # Link receipt to transaction
+    receipt.transaction_id = transaction_id
+    await db.commit()
+    await db.refresh(receipt)
+
+    return receipt
+
+
+async def unlink_receipt_from_transaction(
+    db: AsyncSession,
+    receipt_id: str,
+    user_id: str
+) -> Optional[Receipt]:
+    """
+    Unlink a receipt from its transaction.
+
+    Args:
+        db: Database session
+        receipt_id: Receipt ID
+        user_id: User ID (for security check)
+
+    Returns:
+        Updated Receipt or None if not found/unauthorized
+    """
+    # Get receipt and verify ownership
+    receipt_result = await db.execute(
+        select(Receipt).where(
+            and_(
+                Receipt.id == receipt_id,
+                Receipt.user_id == user_id
+            )
+        )
+    )
+    receipt = receipt_result.scalar_one_or_none()
+    if not receipt:
+        return None
+
+    # Unlink
+    receipt.transaction_id = None
+    await db.commit()
+    await db.refresh(receipt)
 
     return receipt
