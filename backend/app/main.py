@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.features.auth.router import router as auth_router
 from app.features.receipts.router import router as receipts_router
+from app.features.categories.router import router as categories_router
+from app.features.transactions.router import router as transactions_router
 
 
 @asynccontextmanager
@@ -39,6 +41,8 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router, prefix="/api")
 app.include_router(receipts_router, prefix="/api")
+app.include_router(categories_router)
+app.include_router(transactions_router, prefix="/api")
 
 
 @app.get("/health")
