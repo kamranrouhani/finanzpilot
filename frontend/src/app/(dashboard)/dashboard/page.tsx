@@ -2,43 +2,39 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser } from "@/lib/api/auth";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { getTransactionStats, type TransactionStats } from "@/lib/api/transactions";
 import { Button } from "@/components/ui/button";
-import type { User } from "@/types/auth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowUp, ArrowDown, Wallet, TrendingUp, Upload, CreditCard, Receipt, Target } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<TransactionStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    Promise.all([
-      getCurrentUser(token),
-      getTransactionStats(token).catch(() => null)
-    ])
-      .then(([userData, statsData]) => {
-        setUser(userData);
-        setStats(statsData);
-      })
-      .catch(() => {
-        localStorage.removeItem("token");
+    const fetchStats = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
         router.push("/login");
-      })
-      .finally(() => setLoading(false));
-  }, [router]);
+        return;
+      }
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/login");
-  };
+      try {
+        const data = await getTransactionStats(token);
+        setStats(data);
+      } catch (err) {
+        console.error("Failed to fetch stats:", err);
+        setError("Failed to load statistics");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [router]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('de-DE', {
@@ -49,115 +45,150 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-slate-600">Loading dashboard...</p>
+          </div>
+        </div>
+      </DashboardLayout>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  const hasTransactions = stats && stats.transaction_count > 0;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-2xl font-bold text-blue-600">FinanzPilot</h1>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm" onClick={() => router.push('/transactions')}>
-                Transactions
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => router.push('/budgets')}>
-                Budgets
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => router.push('/import')}>
-                Import
-              </Button>
-              <span className="text-sm text-slate-600">
-                {user.username}
-              </span>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                Logout
-              </Button>
-            </div>
-          </div>
+    <DashboardLayout>
+      <div className="space-y-8">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+          <p className="text-slate-600 mt-2">Overview of your financial activity</p>
         </div>
-      </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
-
-        {stats && stats.transaction_count > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase">Total Income</h3>
-              <p className="mt-2 text-2xl font-bold text-green-600">
-                {formatCurrency(stats.total_income)}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase">Total Expenses</h3>
-              <p className="mt-2 text-2xl font-bold text-red-600">
-                {formatCurrency(stats.total_expenses)}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase">Balance</h3>
-              <p className={`mt-2 text-2xl font-bold ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(stats.balance)}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-500 uppercase">Transactions</h3>
-              <p className="mt-2 text-2xl font-bold text-blue-600">
-                {stats.transaction_count}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <h3 className="text-xl font-semibold mb-2">Welcome to FinanzPilot!</h3>
-            <p className="text-gray-600 mb-6">
-              Get started by importing your transactions from Finanzguru.
-            </p>
-            <Button onClick={() => router.push('/import')}>
-              Import Transactions
-            </Button>
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-medium text-gray-900 mb-2">Transactions</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              View and manage your financial transactions
-            </p>
-            <Button variant="outline" size="sm" onClick={() => router.push('/transactions')}>
-              View Transactions
-            </Button>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-medium text-gray-900 mb-2">Import</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Import from Finanzguru XLSX/CSV
-            </p>
-            <Button variant="outline" size="sm" onClick={() => router.push('/import')}>
-              Import Data
-            </Button>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-medium text-gray-900 mb-2">Categories</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Manage transaction categories
-            </p>
-            <Button variant="outline" size="sm" disabled>
-              Coming Soon
-            </Button>
-          </div>
-        </div>
-      </main>
-    </div>
+        {!hasTransactions ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Welcome to FinanzPilot!</CardTitle>
+              <CardDescription>
+                Get started by importing your transactions from Finanzguru
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => router.push('/import')} className="gap-2">
+                <Upload className="h-4 w-4" />
+                Import Transactions
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Stats Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+                  <ArrowUp className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(stats!.total_income)}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">This period</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                  <ArrowDown className="h-4 w-4 text-red-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">
+                    {formatCurrency(stats!.total_expenses)}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">This period</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Balance</CardTitle>
+                  <Wallet className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${stats!.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(stats!.balance)}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Income - Expenses</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-slate-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-slate-900">
+                    {stats!.transaction_count}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Total recorded</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Quick Actions</h2>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/transactions')}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                      Transactions
+                    </CardTitle>
+                    <CardDescription>
+                      View and manage your financial transactions
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/budgets')}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-green-600" />
+                      Budgets
+                    </CardTitle>
+                    <CardDescription>
+                      Track spending against your budget goals
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => router.push('/import')}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Upload className="h-5 w-5 text-purple-600" />
+                      Import Data
+                    </CardTitle>
+                    <CardDescription>
+                      Import from Finanzguru XLSX/CSV files
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }

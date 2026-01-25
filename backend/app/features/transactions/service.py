@@ -172,6 +172,7 @@ class TransactionService:
                 temp_file.flush()
             # Parse file
             parsed_transactions = parse_finanzguru_file(temp_path)
+            logger.info(f"Parsed {len(parsed_transactions)} transactions from file")
 
             # Import statistics
             stats = {
@@ -350,9 +351,10 @@ class TransactionService:
     ) -> Dict[str, Any]:
         """Get transaction statistics using database aggregation."""
         # Use database-level aggregation for better performance
+        from sqlalchemy import case
         query = select(
-            func.sum(func.case((Transaction.amount > 0, Transaction.amount), else_=0)).label("total_income"),
-            func.sum(func.case((Transaction.amount < 0, func.abs(Transaction.amount)), else_=0)).label("total_expenses"),
+            func.sum(case((Transaction.amount > 0, Transaction.amount)).else_(0)).label("total_income"),
+            func.sum(case((Transaction.amount < 0, func.abs(Transaction.amount))).else_(0)).label("total_expenses"),
             func.count(Transaction.id).label("transaction_count")
         ).where(Transaction.user_id == user_id)
 

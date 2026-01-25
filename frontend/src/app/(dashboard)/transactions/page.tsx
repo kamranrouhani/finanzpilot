@@ -5,6 +5,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Upload } from 'lucide-react';
 import { getTransactions, type Transaction, type TransactionFilters } from '@/lib/api/transactions';
 
 export default function TransactionsPage() {
@@ -49,7 +53,16 @@ export default function TransactionsPage() {
   }, [token, filters]);
 
   if (!token) {
-    return null;
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-slate-600">Loading...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   const formatAmount = (amount: string) => {
@@ -66,109 +79,117 @@ export default function TransactionsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Transactions</h1>
-        <button
-          onClick={() => router.push('/import')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-        >
-          Import Transactions
-        </button>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="text-center py-12">
-          <p>Loading transactions...</p>
-        </div>
-      ) : transactions.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600 mb-4">No transactions found</p>
-          <button
-            onClick={() => router.push('/import')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
-          >
-            Import Your First Transactions
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Counterparty
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(tx.date)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {tx.counterparty || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {tx.description || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {tx.fg_main_category || '-'}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
-                      parseFloat(tx.amount) >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {formatAmount(tx.amount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Transactions</h1>
+            <p className="text-slate-600 mt-2">View and manage your financial transactions</p>
           </div>
+          <Button onClick={() => router.push('/import')} className="gap-2">
+            <Upload className="h-4 w-4" />
+            Import Transactions
+          </Button>
+        </div>
 
-          <div className="bg-gray-50 px-6 py-4 flex justify-between items-center">
-            <p className="text-sm text-gray-700">
-              Showing {filters.skip! + 1} to {Math.min(filters.skip! + filters.limit!, total)} of {total} transactions
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilters({ ...filters, skip: Math.max(0, filters.skip! - filters.limit!) })}
-                disabled={filters.skip === 0}
-                className="px-4 py-2 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setFilters({ ...filters, skip: filters.skip! + filters.limit! })}
-                disabled={filters.skip! + filters.limit! >= total}
-                className="px-4 py-2 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-slate-600">Loading transactions...</p>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        ) : transactions.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <p className="text-slate-600 mb-4">No transactions found</p>
+              <Button onClick={() => router.push('/import')} className="gap-2">
+                <Upload className="h-4 w-4" />
+                Import Your First Transactions
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Counterparty
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {transactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                        {formatDate(tx.date)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                        {tx.counterparty || '-'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">
+                        {tx.description || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {tx.fg_main_category || '-'}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
+                        parseFloat(tx.amount) >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {formatAmount(tx.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bg-slate-50 px-6 py-4 flex justify-between items-center border-t border-slate-200">
+              <p className="text-sm text-slate-700">
+                Showing {filters.skip! + 1} to {Math.min(filters.skip! + filters.limit!, total)} of {total} transactions
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilters({ ...filters, skip: Math.max(0, filters.skip! - filters.limit!) })}
+                  disabled={filters.skip === 0}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilters({ ...filters, skip: filters.skip! + filters.limit! })}
+                  disabled={filters.skip! + filters.limit! >= total}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }
